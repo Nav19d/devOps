@@ -2,7 +2,7 @@ name: CI devops 2024
 on:
   push:
     branches:
-      - main
+      - master
       - develop
   pull_request:
 
