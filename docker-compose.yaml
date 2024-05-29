@@ -1,0 +1,33 @@
+version: '3.7'
+
+services:
+    backend: 
+        container_name: my_java
+        build: ./backend_API/simple-api-student
+        
+        networks:
+        - app-network
+
+        depends_on:
+        - database
+
+    database: 
+        container_name: my_postgres_container
+        build: ./database
+        
+        networks:
+        - app-network
+
+    httpd:
+        container_name: my-running-app
+        build: ./Http  
+        ports:
+        - 80:80
+        networks:
+         - app-network
+        depends_on:
+        - backend
+        - database
+
+networks:
+    app-network:
