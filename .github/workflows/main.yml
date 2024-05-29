@@ -2,7 +2,7 @@ name: CI devops 2024
 on:
   push:
     branches:
-      - master
+      - main
       - develop
   pull_request:
 
@@ -23,3 +23,37 @@ jobs:
       # Build and test your app with Maven
       - name: Build and test with Maven
         run: mvn clean verify --file backend_API/simple-api-student/pom.xml
+
+# define job to build and publish docker image
+build-and-push-docker-image:
+ needs: test-backend
+ # run only when code is compiling and tests are passing
+ runs-on: ubuntu-22.04
+
+ # steps to perform in job
+ steps:
+   - name: Checkout code
+     uses: actions/checkout@v2.5.0
+   - name: Login to DockerHub
+    run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+
+   - name: Build image and push backend
+     uses: docker/build-push-action@v3
+     with:
+       # relative path to the place where source code with Dockerfile is located
+       context: ./backend_API/simple-api-student
+       # Note: tags has to be all lower-case
+       tags:  ${{secrets.DOCKERHUB_USERNAME}}/backend:latest
+
+   - name: Build image and push database
+    uses: docker/build-push-action@v3
+    with:
+      context: ./database
+      tags: ${{secrets.DOCKERHUB_USERNAME}}/database:latest
+
+   - name: Build image and push httpd
+    uses: docker/build-push-action@v3
+    with:
+      context: ./Http
+      tags:  ${{secrets.DOCKERHUB_USERNAME}}/httpd:latest
+
