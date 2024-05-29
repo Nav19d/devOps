@@ -19,7 +19,7 @@ jobs:
           distribution: 'temurin'
       # Build and test your app with Maven
       - name: Build and test with Maven
-        run: mvn clean verify --file backend_API/simple-api-student/pom.xml
+        run: mvn -B verify sonar:sonar -Dsonar.projectKey=Nav19d_devOps -Dsonar.organization=nav19d -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=${{ secrets.SONAR_TOKEN }}  --file ./backend_API/simple-api-student/pom.xml
 # define job to build and publish docker image
 
   build-and-push-docker-image:
@@ -54,3 +54,5 @@ jobs:
           context: ./Http
           tags:  ${{secrets.DOCKERHUB_USERNAME}}/httpd:latest
           push: ${{ github.ref == 'refs/heads/master' }}
+
+
