@@ -1,0 +1,5 @@
+- name: Run backend
+  docker_container:
+    name: backend
+    image: nav19d/backend:latest
+  

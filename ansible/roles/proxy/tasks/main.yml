@@ -1,0 +1,4 @@
+- name: Run HTTPD
+  docker_container:
+    name: httpd
+    image: nav19d/httpd:latest

@@ -1,0 +1,5 @@
+- name: Run database
+  docker_container:
+    name: database
+    image: nav19d/database:latest
+  
