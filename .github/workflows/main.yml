@@ -6,7 +6,7 @@ on:
       - develop
   pull_request:
 jobs:
-  test-backend: 
+  build-and-test-backend: 
     runs-on: ubuntu-22.04
     steps:
       # Checkout your GitHub code using actions/checkout@v2.5.0
@@ -23,7 +23,7 @@ jobs:
 # define job to build and publish docker image
 
   build-and-push-docker-image:
-    needs: test-backend
+    needs: build-and-test-backend
     # run only when code is compiling and tests are passing
     runs-on: ubuntu-22.04
     # steps to perform in job
@@ -41,16 +41,16 @@ jobs:
           context: ./backend_API/simple-api-student
           # Note: tags has to be all lower-case
           tags:  ${{secrets.DOCKERHUB_USERNAME}}/backend:latest
-          push: ${{ github.ref == 'refs/heads/main' }}
+          push: ${{ github.ref == 'refs/heads/master' }}
       - name: Build image and push database
         uses: docker/build-push-action@v3
         with:
           context: ./database
           tags: ${{secrets.DOCKERHUB_USERNAME}}/database:latest
-          push: ${{ github.ref == 'refs/heads/main' }}
+          push: ${{ github.ref == 'refs/heads/master' }}
       - name: Build image and push httpd
         uses: docker/build-push-action@v3
         with:
           context: ./Http
           tags:  ${{secrets.DOCKERHUB_USERNAME}}/httpd:latest
-          push: ${{ github.ref == 'refs/heads/main' }}
+          push: ${{ github.ref == 'refs/heads/master' }}
