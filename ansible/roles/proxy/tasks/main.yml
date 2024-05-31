@@ -1,4 +1,8 @@
 - name: Run HTTPD
   docker_container:
-    name: httpd
+    name: my-running-app
     image: nav19d/httpd:latest
+    ports:
+    - "80:80" 
+    networks: 
+    - name: app-network

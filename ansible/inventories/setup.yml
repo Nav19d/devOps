@@ -6,4 +6,3 @@ all:
     prod:
       hosts:
         navid.bar-hen.takima.cloud
-

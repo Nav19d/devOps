@@ -1,5 +1,7 @@
 - name: Run backend
   docker_container:
-    name: backend
+    name: my_java
     image: nav19d/backend:latest
-  
+    state: started
+    networks: 
+     - name: app-network 

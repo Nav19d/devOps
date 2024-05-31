@@ -1,5 +1,7 @@
 - name: Run database
   docker_container:
-    name: database
+    name: my_postgres_container
     image: nav19d/database:latest
-  
+    state: started
+    networks: 
+     - name: app-network
