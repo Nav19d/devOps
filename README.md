@@ -178,8 +178,292 @@ networks:
 To publish our images, we can use docker hub, associated with our github account.
 To do so just use the command :
 ```docker tag name-of-image USERNAME/image-name
-   docker push name-of-image USERNAME/image```
+   docker push name-of-image USERNAME/image
+```
 
 
 
+## Part 2 : Github Actions
 
+We will use GitHub Actions to push my code to SonarCloud, ensuring continuous integration and code quality checks. For enhanced security, we will use GitHub secrets to manage sensitive information.
+
+### Test Containers 
+GitHub Test Containers are a set of libraries that help you run integration tests using Docker containers. They ensure your tests run in an environment similar to production, leading to more reliable results. Key benefits include reusable containers, consistent environments, and isolated tests. 
+
+### Github Workflow
+
+```
+name: CI devops 2024
+on:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+jobs:
+  build-and-test-backend: 
+    runs-on: ubuntu-22.04
+    steps:
+      # Checkout your GitHub code using actions/checkout@v2.5.0
+      - uses: actions/checkout@v2.5.0
+      # Set up JDK 17 using actions/setup-java@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      # Build and test your app with Maven
+      - name: Build and test with Maven
+        run: mvn -B verify sonar:sonar -Dsonar.projectKey=Nav19d_devOps -Dsonar.organization=nav19d -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=${{ secrets.SONAR_TOKEN }}  --file ./backend_API/simple-api-student/pom.xml
+# define job to build and publish docker image
+
+  build-and-push-docker-image:
+    needs: build-and-test-backend
+    # run only when code is compiling and tests are passing
+    runs-on: ubuntu-22.04
+    # steps to perform in job
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2.5.0
+      - name: Login to DockerHub
+        run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
+        
+
+      - name: Build image and push backend
+        uses: docker/build-push-action@v3
+        with:
+          # relative path to the place where source code with Dockerfile is located
+          context: ./backend_API/simple-api-student
+          # Note: tags has to be all lower-case
+          tags:  ${{secrets.DOCKERHUB_USERNAME}}/backend:latest
+          push: ${{ github.ref == 'refs/heads/master' }}
+      - name: Build image and push database
+        uses: docker/build-push-action@v3
+        with:
+          context: ./database
+          tags: ${{secrets.DOCKERHUB_USERNAME}}/database:latest
+          push: ${{ github.ref == 'refs/heads/master' }}
+      - name: Build image and push httpd
+        uses: docker/build-push-action@v3
+        with:
+          context: ./Http
+          tags:  ${{secrets.DOCKERHUB_USERNAME}}/httpd:latest
+          push: ${{ github.ref == 'refs/heads/master' }}
+
+```
+
+### Workflow Triggers
+
+- **Push Events**: Triggers on push to `master` or `develop` branches.
+- **Pull Request Events**: Triggers on pull requests.
+
+### Jobs
+
+#### 1. Build and Test Backend
+
+**Job Name**: `build-and-test-backend`  
+**Runs on**: `ubuntu-22.04`
+
+**Steps**:
+1. **Checkout Code**: Uses `actions/checkout@v2.5.0` to check out the repository code.
+2. **Set up JDK 17**: Uses `actions/setup-java@v3` to set up Java Development Kit version 17 with the Temurin distribution.
+3. **Build and Test with Maven**: Runs Maven to build the project, run tests, and perform a SonarCloud analysis.
+
+    ```yaml
+    - name: Build and test with Maven
+      run: mvn -B verify sonar:sonar -Dsonar.projectKey=Nav19d_devOps -Dsonar.organization=nav19d -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=${{ secrets.SONAR_TOKEN }} --file ./backend_API/simple-api-student/pom.xml
+    ```
+
+#### 2. Build and Push Docker Image
+
+**Job Name**: `build-and-push-docker-image`  
+**Needs**: `build-and-test-backend` (Runs only if the backend build and tests pass)  
+**Runs on**: `ubuntu-22.04`
+
+**Steps**:
+1. **Checkout Code**: Uses `actions/checkout@v2.5.0` to check out the repository code.
+2. **Login to DockerHub**: Logs in to DockerHub using credentials stored in GitHub secrets.
+
+    ```yaml
+    - name: Login to DockerHub
+      run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
+    ```
+
+3. **Build and Push Docker Images**: Uses `docker/build-push-action@v3` to build and push Docker images.
+
+    - **Backend Image**:
+      - **Context**: `./backend_API/simple-api-student`
+      - **Tag**: `${{secrets.DOCKERHUB_USERNAME}}/backend:latest`
+      - **Push Condition**: Only pushes if the branch is `master`.
+
+        ```yaml
+        - name: Build image and push backend
+          uses: docker/build-push-action@v3
+          with:
+            context: ./backend_API/simple-api-student
+            tags: ${{secrets.DOCKERHUB_USERNAME}}/backend:latest
+            push: ${{ github.ref == 'refs/heads/master' }}
+        ```
+
+    - **Database Image**:
+      - **Context**: `./database`
+      - **Tag**: `${{secrets.DOCKERHUB_USERNAME}}/database:latest`
+      - **Push Condition**: Only pushes if the branch is `master`.
+
+        ```yaml
+        - name: Build image and push database
+          uses: docker/build-push-action@v3
+          with:
+            context: ./database
+            tags: ${{secrets.DOCKERHUB_USERNAME}}/database:latest
+            push: ${{ github.ref == 'refs/heads/master' }}
+        ```
+
+    - **HTTPD Image**:
+      - **Context**: `./Http`
+      - **Tag**: `${{secrets.DOCKERHUB_USERNAME}}/httpd:latest`
+      - **Push Condition**: Only pushes if the branch is `master`.
+
+        ```yaml
+        - name: Build image and push httpd
+          uses: docker/build-push-action@v3
+          with:
+            context: ./Http
+            tags: ${{secrets.DOCKERHUB_USERNAME}}/httpd:latest
+            push: ${{ github.ref == 'refs/heads/master' }}
+        ```
+
+### Summary
+
+This GitHub Actions pipeline automates the process of building, testing, and deploying the application. It ensures consistency and reliability by leveraging Docker for deployment and SonarCloud for code quality analysis.
+
+
+## TP3 : Ansible
+
+For our project, we will use Ansible to install and deploy our application automatically. We will be able to access our web app not only locally
+
+Ansible inventories define the hosts and groups of hosts upon which commands, modules, and playbooks can be executed. By default, the inventory is stored in /etc/ansible/hosts. For our project, we create a custom inventory file to define our production environment.
+
+```
+all:
+ vars:
+   ansible_user: centos
+   ansible_ssh_private_key_file: ~/ssh_keys/id_rsa
+ children:
+   prod:
+     hosts: navid.bar-hen.takima.cloud
+```
+
+To test the connectivity to our host using the inventory, we can use the Ansible ping module:
+```
+ansible all -i inventories/setup.yml -m ping
+```
+
+Now we create a playbook to configurates our host and decide the order of the tasks
+```
+- hosts: all
+  gather_facts: false
+  become: true
+  roles:
+  - docker
+  - network
+  - database
+  - app
+  - proxy
+```
+
+The playbook runs on all hosts specified in the Ansible inventory.
+Fact collection is disabled (gather_facts: false) to optimize performance, as facts are not needed in this case.
+Privilege (become: true) are granted to allow execution of commands with superuser privileges.
+The Docker role is included (- docker) in the list of roles to apply. This triggers the execution of the docker/tasks/main.yml job file in the Docker role on each target host.
+In the Docker role, environment variables are loaded from the . env, the required packages are installed, Docker is configured and the Docker service is started.
+
+We create our roles :
+
+```
+ansible-galaxy init roles/docker
+```
+
+
+our tasks : 
+
+```
+- name: Run backend
+  docker_container:
+    name: my_java
+    image: nav19d/backend:latest
+    state: started
+    networks: 
+     - name: app-network 
+```
+
+```
+- name: Run database
+  docker_container:
+    name: my_postgres_container
+    image: nav19d/database:latest
+    state: started
+    networks: 
+     - name: app-network
+```
+
+```
+- name: Create a network
+  docker_network:
+    name: app-network
+    state: present
+```
+```
+
+# Install Docker
+
+  - name: Install device-mapper-persistent-data
+    yum:
+      name: device-mapper-persistent-data
+      state: latest
+
+  - name: Install lvm2
+    yum:
+      name: lvm2
+      state: latest
+
+  - name: add repo docker
+    command:
+      cmd: sudo yum-config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+
+  - name: Install Docker
+    yum:
+      name: docker-ce
+      state: present
+
+  - name: Install python3
+    yum:
+      name: python3
+      state: present
+
+  - name: Install docker with Python 3
+    pip:
+      name: docker
+      executable: pip3
+    vars:
+      ansible_python_interpreter: /usr/bin/python3
+
+  - name: Make sure Docker is running
+    service: name=docker state=started
+    tags: docker
+```
+```
+- name: Run HTTPD
+  docker_container:
+    name: my-running-app
+    image: nav19d/httpd:latest
+    ports:
+    - "80:80" 
+    networks: 
+    - name: app-network
+```
+
+and now we can deploy our app accessible at navid.bar-hen.takima.cloud" with
+```
+ansible-playbook -i ansible/inventory/setup.yml ansible/playbook.yml
+```
